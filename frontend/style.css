@@ -1,0 +1,337 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    color: #e0e0e0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    padding: 30px 0;
+}
+
+header h1 {
+    font-size: 2.2rem;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #8892b0;
+    font-size: 1.1rem;
+}
+
+/* 卡片样式 */
+.card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    backdrop-filter: blur(10px);
+}
+
+.card h2 {
+    color: #64ffda;
+    margin-bottom: 12px;
+    font-size: 1.3rem;
+}
+
+.hint {
+    color: #8892b0;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+/* 权重配置 */
+.weight-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.weight-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.weight-item label {
+    font-size: 0.9rem;
+    color: #ccd6f6;
+}
+
+.weight-item input {
+    width: 80px;
+    padding: 8px;
+    border: 1px solid rgba(100, 255, 218, 0.3);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #64ffda;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.weight-item input:focus {
+    outline: none;
+    border-color: #64ffda;
+    box-shadow: 0 0 8px rgba(100, 255, 218, 0.2);
+}
+
+/* 策略按钮 */
+.strategy-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.strategy-buttons button {
+    padding: 8px 16px;
+    border: 1px solid rgba(100, 255, 218, 0.4);
+    border-radius: 20px;
+    background: transparent;
+    color: #64ffda;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+}
+
+.strategy-buttons button:hover {
+    background: rgba(100, 255, 218, 0.1);
+    border-color: #64ffda;
+}
+
+/* 表格 */
+.table-wrapper {
+    overflow-x: auto;
+    margin: 16px 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+th, td {
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+th {
+    background: rgba(100, 255, 218, 0.1);
+    color: #64ffda;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+}
+
+.group-header.profitability { background: rgba(255, 193, 7, 0.15); color: #ffc107; }
+.group-header.quality { background: rgba(76, 175, 80, 0.15); color: #4caf50; }
+.group-header.growth { background: rgba(33, 150, 243, 0.15); color: #2196f3; }
+.group-header.valuation { background: rgba(156, 39, 176, 0.15); color: #ce93d8; }
+.group-header.capital { background: rgba(255, 87, 34, 0.15); color: #ff7043; }
+
+th.profitability { background: rgba(255, 193, 7, 0.08); }
+th.quality { background: rgba(76, 175, 80, 0.08); }
+th.growth { background: rgba(33, 150, 243, 0.08); }
+th.valuation { background: rgba(156, 39, 176, 0.08); }
+th.capital { background: rgba(255, 87, 34, 0.08); }
+
+td input {
+    width: 70px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #e0e0e0;
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+td input:focus {
+    outline: none;
+    border-color: #64ffda;
+}
+
+/* 操作按钮 */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.btn-add, .btn-sample, .btn-clear {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.btn-add {
+    background: rgba(100, 255, 218, 0.15);
+    color: #64ffda;
+    border: 1px solid rgba(100, 255, 218, 0.4);
+}
+
+.btn-add:hover {
+    background: rgba(100, 255, 218, 0.25);
+}
+
+.btn-sample {
+    background: rgba(33, 150, 243, 0.15);
+    color: #64b5f6;
+    border: 1px solid rgba(33, 150, 243, 0.4);
+}
+
+.btn-sample:hover {
+    background: rgba(33, 150, 243, 0.25);
+}
+
+.btn-clear {
+    background: rgba(244, 67, 54, 0.15);
+    color: #ef5350;
+    border: 1px solid rgba(244, 67, 54, 0.4);
+}
+
+.btn-clear:hover {
+    background: rgba(244, 67, 54, 0.25);
+}
+
+.btn-delete {
+    padding: 4px 10px;
+    border: 1px solid rgba(244, 67, 54, 0.4);
+    border-radius: 4px;
+    background: rgba(244, 67, 54, 0.1);
+    color: #ef5350;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-delete:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+/* 分析按钮 */
+.analyze-section {
+    text-align: center;
+    margin: 24px 0;
+}
+
+.btn-analyze {
+    padding: 14px 48px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 30px;
+    background: linear-gradient(135deg, #64ffda, #00bfa5);
+    color: #1a1a2e;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(100, 255, 218, 0.3);
+}
+
+.btn-analyze:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 30px rgba(100, 255, 218, 0.5);
+}
+
+.btn-analyze:active {
+    transform: translateY(0);
+}
+
+/* 结果区域 */
+.result-section {
+    border-color: rgba(100, 255, 218, 0.3);
+}
+
+.result-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: rgba(100, 255, 218, 0.05);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+
+.summary-card .rank {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #64ffda;
+}
+
+.summary-card .name {
+    font-size: 1rem;
+    color: #ccd6f6;
+    margin: 4px 0;
+}
+
+.summary-card .score {
+    font-size: 0.9rem;
+    color: #8892b0;
+}
+
+#result-table tbody tr:nth-child(1) { background: rgba(255, 215, 0, 0.1); }
+#result-table tbody tr:nth-child(2) { background: rgba(192, 192, 192, 0.08); }
+#result-table tbody tr:nth-child(3) { background: rgba(205, 127, 50, 0.08); }
+
+#result-table .rank-cell {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+#result-table .score-cell {
+    color: #64ffda;
+    font-weight: bold;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #8892b0;
+    font-size: 0.85rem;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .weight-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .btn-analyze {
+        padding: 12px 32px;
+        font-size: 1rem;
+    }
+}

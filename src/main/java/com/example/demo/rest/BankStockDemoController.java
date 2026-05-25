@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/bank-stock/demo")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class BankStockDemoController {
 
     private final BankStockAnalysisService bankStockAnalysisService;

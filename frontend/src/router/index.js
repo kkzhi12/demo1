@@ -31,7 +31,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title ? `${to.meta.title} - 银行股分析` : '银行股价值分析系统'
+  document.title = to.meta.title ? `${to.meta.title} - 股票价值分析` : '股票价值分析系统'
   next()
 })
 

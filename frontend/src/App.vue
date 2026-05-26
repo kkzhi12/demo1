@@ -4,7 +4,7 @@
       <el-container>
         <el-header class="app-header">
           <div class="header-left">
-            <h1>🏦 银行股价值分析系统</h1>
+            <h1>📈 股票价值分析系统</h1>
           </div>
           <el-menu
             :default-active="currentRoute"

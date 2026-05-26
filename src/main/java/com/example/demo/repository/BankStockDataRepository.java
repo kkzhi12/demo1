@@ -1,7 +1,11 @@
 package com.example.demo.repository;
 
 import com.example.demo.entity.BankStockData;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,6 +29,20 @@ public interface BankStockDataRepository extends JpaRepository<BankStockData, Lo
     Optional<BankStockData> findByStockCodeAndReportPeriod(String stockCode, String reportPeriod);
 
     /** 查询所有可用的报告期 */
-    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT d.reportPeriod FROM BankStockData d ORDER BY d.reportPeriod DESC")
+    @Query("SELECT DISTINCT d.reportPeriod FROM BankStockData d ORDER BY d.reportPeriod DESC")
     List<String> findAllReportPeriods();
+
+    /** 分页查询：按股票代码模糊 + 报告期筛选 */
+    @Query("SELECT d FROM BankStockData d WHERE " +
+            "(:stockCode IS NULL OR :stockCode = '' OR d.stockCode LIKE CONCAT('%', :stockCode, '%') OR d.stockName LIKE CONCAT('%', :stockCode, '%')) " +
+            "AND (:reportPeriod IS NULL OR :reportPeriod = '' OR d.reportPeriod = :reportPeriod) " +
+            "ORDER BY d.reportPeriod DESC, d.stockCode ASC")
+    Page<BankStockData> searchByCondition(
+            @Param("stockCode") String stockCode,
+            @Param("reportPeriod") String reportPeriod,
+            Pageable pageable);
+
+    /** 查询最新一期报告期 */
+    @Query("SELECT d.reportPeriod FROM BankStockData d ORDER BY d.reportPeriod DESC LIMIT 1")
+    String findLatestReportPeriod();
 }

@@ -35,6 +35,20 @@ export const analysisApi = {
 }
 
 /**
+ * 数据查看相关接口
+ */
+export const dataApi = {
+  // 分页查询
+  pageQuery: (params) => request.get('/bank-data/page', { params }),
+  // 获取所有报告期
+  getReportPeriods: () => request.get('/bank-data/report-periods'),
+  // 获取最新报告期
+  getLatestPeriod: () => request.get('/bank-data/latest-period'),
+  // 查询股票历史数据
+  getHistory: (stockCode) => request.get(`/bank-data/history/${stockCode}`),
+}
+
+/**
  * 爬虫相关接口
  */
 export const crawlerApi = {

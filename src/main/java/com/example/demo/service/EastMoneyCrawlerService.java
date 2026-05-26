@@ -215,10 +215,12 @@ public class EastMoneyCrawlerService {
 
             // 成长性
             data.setRevenueGrowthRate(getDecimal(matched, "TOTALOPERATERETZ")); // 营收同比增长
-            if (data.getRevenueGrowthRate() == null)
+            if (data.getRevenueGrowthRate() == null) {
                 data.setRevenueGrowthRate(getDecimal(matched, "TOTALOPERATEREVETZ"));
-            if (data.getRevenueGrowthRate() == null)
+            }
+            if (data.getRevenueGrowthRate() == null) {
                 data.setRevenueGrowthRate(getDecimal(matched, "OI_YOYRATIO_PK"));
+            }
 
             data.setNetProfitGrowthRate(getDecimal(matched, "PARENTNETPROFITTZ")); // 归母净利润同比 3.31
             data.setLoanGrowthRate(getDecimal(matched, "LOAN_GROWTH_RATE"));       // 贷款增长率
@@ -231,8 +233,9 @@ public class EastMoneyCrawlerService {
             // 资本充足性
             data.setCapitalAdequacyRatio(getDecimal(matched, "NEWCAPITALADER"));        // 资本充足率 18.21
             data.setCoreCapitalAdequacyRatio(getDecimal(matched, "HXYJBCZL"));          // 核心一级资本充足率 13.26
-            if (data.getCoreCapitalAdequacyRatio() == null)
+            if (data.getCoreCapitalAdequacyRatio() == null) {
                 data.setCoreCapitalAdequacyRatio(getDecimal(matched, "FIRST_ADEQUACY_RATIO"));
+            }
 
             // 打印获取到的数据
             log.info("爬取结果 - {} ROE:{}, 营收增长:{}, 净利润增长:{}, 不良率:{}, 拨备覆盖率:{}, 资本充足率:{}",
@@ -331,10 +334,165 @@ public class EastMoneyCrawlerService {
     }
 
     /**
-     * 获取支持的银行股列表
+     * 获取支持的银行股列表（静态配置）
      */
     public Map<String, String> getSupportedBanks() {
         return BANK_STOCK_MAP;
+    }
+
+    /**
+     * 从东方财富接口动态获取所有A股股票代码列表
+     * 接口：push2.eastmoney.com/api/qt/clist/get
+     *
+     * @return 股票代码 -> 股票名称 的Map
+     */
+    public Map<String, String> fetchAllStockCodes() {
+        Map<String, String> stockMap = new LinkedHashMap<>();
+        int page = 1;
+        int pageSize = 2000;
+
+        while (true) {
+            String url = "http://push2.eastmoney.com/api/qt/clist/get?"
+                    + "pn=" + page
+                    + "&pz=" + pageSize
+                    + "&po=1&np=1&fltt=2&invt=2&fid=f3"
+                    + "&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23"  // 沪深A股
+                    + "&fields=f12,f14,f13";  // f12=代码, f14=名称, f13=市场
+
+            try {
+                String json = doGet(url);
+                if (json == null || json.isBlank()) break;
+
+                JsonNode root = objectMapper.readTree(json);
+                JsonNode data = root.path("data");
+                if (data.isNull() || data.isMissingNode()) break;
+
+                JsonNode diff = data.path("diff");
+                if (!diff.isArray() || diff.isEmpty()) break;
+
+                for (JsonNode item : diff) {
+                    String code = item.path("f12").asText();
+                    String name = item.path("f14").asText();
+                    stockMap.put(code, name);
+                }
+
+                int total = data.path("total").asInt(0);
+                log.info("获取股票列表第{}页，本页{}条，累计{}/{}",
+                        page, diff.size(), stockMap.size(), total);
+
+                if (stockMap.size() >= total) break;
+                page++;
+                Thread.sleep(300);
+
+            } catch (Exception e) {
+                log.error("获取股票列表第{}页失败: {}", page, e.getMessage());
+                break;
+            }
+        }
+
+        log.info("共获取 {} 只A股股票", stockMap.size());
+        return stockMap;
+    }
+
+    /**
+     * 从东方财富接口获取银行板块股票列表
+     * 板块代码：BK0475（银行）
+     *
+     * @return 银行股代码 -> 名称 的Map
+     */
+    public Map<String, String> fetchBankStockCodes() {
+        Map<String, String> bankMap = new LinkedHashMap<>();
+
+        String url = "http://push2.eastmoney.com/api/qt/clist/get?"
+                + "pn=1&pz=100&po=1&np=1&fltt=2&invt=2&fid=f3"
+                + "&fs=b:BK0475"  // 银行板块
+                + "&fields=f12,f14,f13";
+
+        try {
+            String json = doGet(url);
+            if (json == null || json.isBlank()) {
+                log.warn("获取银行板块数据为空，使用静态列表");
+                return BANK_STOCK_MAP;
+            }
+
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode diff = root.path("data").path("diff");
+
+            if (diff.isArray() && !diff.isEmpty()) {
+                for (JsonNode item : diff) {
+                    String code = item.path("f12").asText();
+                    String name = item.path("f14").asText();
+                    bankMap.put(code, name);
+                }
+                log.info("从东方财富接口获取到 {} 只银行股", bankMap.size());
+            } else {
+                log.warn("银行板块接口返回为空，使用静态列表");
+                return BANK_STOCK_MAP;
+            }
+
+        } catch (Exception e) {
+            log.error("获取银行板块失败: {}，使用静态列表", e.getMessage());
+            return BANK_STOCK_MAP;
+        }
+
+        return bankMap;
+    }
+
+    /**
+     * 使用动态获取的银行股列表批量爬取财报数据
+     *
+     * @param reportPeriod 报告期（如 2024Q4）
+     * @return 爬取结果列表
+     */
+    @Transactional
+    public List<CrawlResult> crawlAllBanksDynamic(String reportPeriod) {
+        // 动态获取最新银行股列表
+        Map<String, String> bankStocks = fetchBankStockCodes();
+        log.info("使用动态银行股列表，共{}只", bankStocks.size());
+
+        List<CrawlResult> results = new ArrayList<>();
+        int index = 0;
+        for (Map.Entry<String, String> entry : bankStocks.entrySet()) {
+            index++;
+            String stockCode = entry.getKey();
+            String stockName = entry.getValue();
+
+            log.info("[{}/{}] 正在爬取 {}({})...", index, bankStocks.size(), stockName, stockCode);
+
+            try {
+                // 确定市场后缀
+                String marketSuffix = stockCode.startsWith("6") ? "SH" : "SZ";
+                String secuCode = stockCode + "." + marketSuffix;
+
+                BankStockData data = fetchFinancialData(secuCode, stockCode, stockName, reportPeriod);
+
+                if (data != null) {
+                    Optional<BankStockData> existing = bankStockDataRepository
+                            .findByStockCodeAndReportPeriod(stockCode, reportPeriod);
+                    existing.ifPresent(bankStockData -> data.setId(bankStockData.getId()));
+                    bankStockDataRepository.save(data);
+                    results.add(CrawlResult.success(stockCode, stockName, "爬取成功"));
+                } else {
+                    results.add(CrawlResult.fail(stockCode, stockName, "该报告期数据尚未发布"));
+                }
+
+            } catch (Exception e) {
+                log.error("爬取 {}({}) 失败: {}", stockName, stockCode, e.getMessage());
+                results.add(CrawlResult.fail(stockCode, stockName, e.getMessage()));
+            }
+
+            // 请求间隔
+            try {
+                Thread.sleep(800);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        long successCount = results.stream().filter(CrawlResult::isSuccess).count();
+        log.info("批量爬取完成：成功{}/总共{}", successCount, results.size());
+        return results;
     }
 
     /**

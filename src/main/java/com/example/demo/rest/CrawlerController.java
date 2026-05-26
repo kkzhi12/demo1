@@ -46,10 +46,40 @@ public class CrawlerController {
     }
 
     /**
-     * 获取支持的银行股列表
+     * 获取支持的银行股列表（静态配置）
      */
     @GetMapping("/supported-banks")
     public Map<String, String> supportedBanks() {
         return crawlerService.getSupportedBanks();
+    }
+
+    /**
+     * 从东方财富接口动态获取所有A股股票代码列表
+     * 注意：数据量较大（约5000只），请求耗时较长
+     */
+    @GetMapping("/fetch-all-stocks")
+    public Map<String, String> fetchAllStocks() {
+        return crawlerService.fetchAllStockCodes();
+    }
+
+    /**
+     * 从东方财富接口动态获取银行板块股票列表
+     * 返回最新的银行股代码和名称
+     */
+    @GetMapping("/fetch-bank-stocks")
+    public Map<String, String> fetchBankStocks() {
+        return crawlerService.fetchBankStockCodes();
+    }
+
+    /**
+     * 使用动态银行股列表批量爬取财报数据
+     * 会先从东方财富获取最新银行板块成分股，再逐一爬取
+     *
+     * @param reportPeriod 报告期（如 2024Q4）
+     */
+    @RequestMapping(value = "/all-banks-dynamic", method = {RequestMethod.GET, RequestMethod.POST})
+    public List<EastMoneyCrawlerService.CrawlResult> crawlAllBanksDynamic(
+            @RequestParam("reportPeriod") String reportPeriod) {
+        return crawlerService.crawlAllBanksDynamic(reportPeriod);
     }
 }

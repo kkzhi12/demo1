@@ -13,21 +13,6 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="报告期">
-          <el-select
-            v-model="searchForm.reportPeriod"
-            placeholder="全部"
-            clearable
-            style="width: 140px"
-          >
-            <el-option
-              v-for="period in reportPeriods"
-              :key="period"
-              :label="period"
-              :value="period"
-            />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -50,8 +35,21 @@
         size="small"
         v-loading="loading"
         style="width: 100%"
-        max-height="600"
+        row-key="rowKey"
       >
+        <!-- 展开列 -->
+        <el-table-column width="40" fixed align="center">
+          <template #default="{ row }">
+            <span
+              v-if="!row._isChild"
+              class="expand-btn"
+              @click="toggleExpand(row)"
+            >
+              <el-icon :class="{ 'is-expanded': row._expanded }"><ArrowRight /></el-icon>
+            </span>
+          </template>
+        </el-table-column>
+
         <el-table-column prop="stockCode" label="股票代码" width="90" fixed />
         <el-table-column prop="stockName" label="股票名称" width="100" fixed />
         <el-table-column prop="reportPeriod" label="报告期" width="85" align="center" />
@@ -119,9 +117,15 @@
           </el-table-column>
         </el-table-column>
 
-        <el-table-column label="操作" width="120" fixed="right" align="center">
+        <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="viewChart(row)">
+            <el-button
+              v-if="!row._isChild"
+              type="primary"
+              size="small"
+              link
+              @click="viewChart(row)"
+            >
               图表趋势
             </el-button>
           </template>
@@ -141,27 +145,23 @@
         />
       </div>
     </div>
-
-    <!-- 历史数据弹窗（已移除，改为跳转图表页） -->
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { dataApi } from '@/api'
 
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
-const reportPeriods = ref([])
 
 // 搜索条件
 const searchForm = reactive({
-  stockCode: '',
-  reportPeriod: ''
+  stockCode: ''
 })
 
 // 分页
@@ -171,21 +171,13 @@ const pagination = reactive({
   total: 0
 })
 
+// 原始数据（不含展开的子行）
+const rawData = ref([])
+
 // 页面加载
 onMounted(async () => {
-  await loadReportPeriods()
   await handleSearch()
 })
-
-// 加载报告期列表
-async function loadReportPeriods() {
-  try {
-    const data = await dataApi.getReportPeriods()
-    reportPeriods.value = data
-  } catch (e) {
-    console.error('获取报告期列表失败', e)
-  }
-}
 
 // 查询
 async function handleSearch() {
@@ -193,11 +185,16 @@ async function handleSearch() {
   try {
     const data = await dataApi.pageQuery({
       stockCode: searchForm.stockCode,
-      reportPeriod: searchForm.reportPeriod,
       page: pagination.page,
       size: pagination.size
     })
-    tableData.value = data.content || []
+    rawData.value = (data.content || []).map(row => ({
+      ...row,
+      rowKey: row.stockCode + '_' + row.reportPeriod,
+      _expanded: false,
+      _isChild: false
+    }))
+    tableData.value = [...rawData.value]
     pagination.total = data.totalElements || 0
   } catch (e) {
     ElMessage.error('查询失败: ' + e.message)
@@ -209,12 +206,43 @@ async function handleSearch() {
 // 重置
 function handleReset() {
   searchForm.stockCode = ''
-  searchForm.reportPeriod = ''
   pagination.page = 1
   handleSearch()
 }
 
-// 查看图表趋势 - 跳转到新tab页
+// 展开/收起历史数据
+async function toggleExpand(row) {
+  if (row._expanded) {
+    // 收起：移除子行
+    row._expanded = false
+    tableData.value = tableData.value.filter(r => r._parentCode !== row.stockCode)
+  } else {
+    // 展开：加载历史数据
+    row._expanded = true
+    try {
+      const history = await dataApi.getHistory(row.stockCode)
+      // 排除当前最新的那条，从新到旧排序
+      const children = history
+        .filter(h => h.reportPeriod !== row.reportPeriod)
+        .sort((a, b) => b.reportPeriod.localeCompare(a.reportPeriod))
+        .map(h => ({
+          ...h,
+          rowKey: h.stockCode + '_' + h.reportPeriod + '_child',
+          _isChild: true,
+          _parentCode: row.stockCode
+        }))
+
+      // 插入到当前行后面
+      const index = tableData.value.findIndex(r => r.rowKey === row.rowKey)
+      tableData.value.splice(index + 1, 0, ...children)
+    } catch (e) {
+      ElMessage.error('获取历史数据失败')
+      row._expanded = false
+    }
+  }
+}
+
+// 查看图表趋势
 function viewChart(row) {
   const routeData = router.resolve({
     path: '/chart',
@@ -253,5 +281,22 @@ function growthClass(val) {
 
 .text-down {
   color: #67c23a;
+}
+
+.expand-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.expand-btn .el-icon {
+  transition: transform 0.2s;
+  color: #409eff;
+  font-size: 14px;
+}
+
+.expand-btn .el-icon.is-expanded {
+  transform: rotate(90deg);
 }
 </style>

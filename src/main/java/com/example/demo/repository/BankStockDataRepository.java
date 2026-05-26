@@ -42,6 +42,15 @@ public interface BankStockDataRepository extends JpaRepository<BankStockData, Lo
             @Param("reportPeriod") String reportPeriod,
             Pageable pageable);
 
+    /** 分页查询：每只股票只返回最新一期数据 */
+    @Query("SELECT d FROM BankStockData d WHERE d.reportPeriod = " +
+            "(SELECT MAX(d2.reportPeriod) FROM BankStockData d2 WHERE d2.stockCode = d.stockCode) " +
+            "AND (:stockCode IS NULL OR :stockCode = '' OR d.stockCode LIKE CONCAT('%', :stockCode, '%') OR d.stockName LIKE CONCAT('%', :stockCode, '%')) " +
+            "ORDER BY d.stockCode ASC")
+    Page<BankStockData> searchLatestByCondition(
+            @Param("stockCode") String stockCode,
+            Pageable pageable);
+
     /** 查询最新一期报告期 */
     @Query("SELECT d.reportPeriod FROM BankStockData d ORDER BY d.reportPeriod DESC LIMIT 1")
     String findLatestReportPeriod();

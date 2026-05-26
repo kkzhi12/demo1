@@ -24,22 +24,19 @@ public class BankStockDataController {
     private final BankStockDataRepository bankStockDataRepository;
 
     /**
-     * 分页查询银行股数据
+     * 分页查询银行股数据（每只股票只返回最新一期）
      *
-     * @param stockCode    股票代码或名称（模糊查询，可选）
-     * @param reportPeriod 报告期（如2024Q4，可选）
-     * @param page         页码（从1开始）
-     * @param size         每页条数
+     * @param stockCode 股票代码或名称（模糊查询，可选）
+     * @param page      页码（从1开始）
+     * @param size      每页条数
      */
     @GetMapping("/page")
     public Page<BankStockData> pageQuery(
             @RequestParam(value = "stockCode", required = false, defaultValue = "") String stockCode,
-            @RequestParam(value = "reportPeriod", required = false, defaultValue = "") String reportPeriod,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "15") int size) {
-        // 前端页码从1开始，Spring Data从0开始
         PageRequest pageRequest = PageRequest.of(Math.max(page - 1, 0), size);
-        return bankStockDataRepository.searchByCondition(stockCode, reportPeriod, pageRequest);
+        return bankStockDataRepository.searchLatestByCondition(stockCode, pageRequest);
     }
 
     /**

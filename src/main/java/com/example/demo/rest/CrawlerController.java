@@ -106,4 +106,18 @@ public class CrawlerController {
     public Map<String, Object> cacheStatus() {
         return Map.of("cacheSize", stockCacheService.getCacheSize());
     }
+
+    /**
+     * 手动触发：从东方财富拉取所有A股代码并入库
+     * 只需成功调用一次，后续启动会自动从数据库加载
+     */
+    @PostMapping("/load-all-stocks")
+    public Map<String, Object> loadAllStocks() {
+        int count = stockCacheService.fetchAndSave();
+        if (count > 0) {
+            return Map.of("success", true, "message", "成功加载并入库", "count", count);
+        } else {
+            return Map.of("success", false, "message", "加载失败，可能被限流，请稍后再试");
+        }
+    }
 }

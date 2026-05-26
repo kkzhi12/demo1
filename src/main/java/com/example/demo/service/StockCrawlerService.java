@@ -147,9 +147,7 @@ public class StockCrawlerService {
             // 保存数据
             Optional<StockFinanceData> existing = stockFinanceDataRepository
                     .findByStockCodeAndReportPeriod(stockCode, reportPeriod);
-            if (existing.isPresent()) {
-                data.setId(existing.get().getId());
-            }
+            existing.ifPresent(stockFinanceData -> data.setId(stockFinanceData.getId()));
             stockFinanceDataRepository.save(data);
 
             log.info("成功保存 {} ({}) 的财务数据", stockName, stockCode);

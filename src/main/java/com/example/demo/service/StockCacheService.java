@@ -1,10 +1,13 @@
 package com.example.demo.service;
 
+import com.example.demo.entity.StockBasicInfo;
+import com.example.demo.repository.StockBasicInfoRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -13,21 +16,23 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
  * 股票缓存服务
- * 服务启动时从东方财富加载所有A股代码和名称到内存缓存
- * 提供快速的本地搜索能力
+ * 启动时从数据库加载，手动触发时从东方财富拉取并入库
  *
  * @author : wangyuzhi
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class StockCacheService {
 
+    private final StockBasicInfoRepository stockBasicInfoRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -37,25 +42,79 @@ public class StockCacheService {
     private final List<StockItem> allStocks = new CopyOnWriteArrayList<>();
 
     /**
-     * 服务启动时加载所有A股数据到缓存
+     * 服务启动时从数据库加载缓存
      */
     @PostConstruct
     public void init() {
-        log.info("开始加载A股股票列表到缓存...");
-        new Thread(this::loadAllStocks, "stock-cache-loader").start();
+        loadFromDb();
     }
 
-    private void loadAllStocks() {
+    /**
+     * 从数据库加载股票列表到内存
+     */
+    private void loadFromDb() {
+        List<StockBasicInfo> list = stockBasicInfoRepository.findAll();
+        if (!list.isEmpty()) {
+            allStocks.clear();
+            allStocks.addAll(list.stream()
+                    .map(s -> new StockItem(s.getStockCode(), s.getStockName()))
+                    .toList());
+            log.info("从数据库加载股票缓存，共 {} 只", allStocks.size());
+        } else {
+            log.info("数据库中无股票基本信息，请手动调用接口加载");
+        }
+    }
+
+    /**
+     * 手动触发：从东方财富拉取所有A股并入库
+     * 成功后自动刷新内存缓存
+     *
+     * @return 加载的股票数量
+     */
+    public int fetchAndSave() {
+        log.info("开始从东方财富拉取A股列表...");
+        List<StockItem> stocks = fetchFromEastMoney();
+
+        if (stocks.isEmpty()) {
+            log.error("从东方财富获取数据为空，可能被限流");
+            return 0;
+        }
+
+        // 入库
+        LocalDateTime now = LocalDateTime.now();
+        List<StockBasicInfo> entities = stocks.stream()
+                .map(s -> StockBasicInfo.builder()
+                        .stockCode(s.getStockCode())
+                        .stockName(s.getStockName())
+                        .updatedAt(now)
+                        .build())
+                .toList();
+
+        // 先清空再批量插入（简单粗暴但有效）
+        stockBasicInfoRepository.deleteAll();
+        stockBasicInfoRepository.saveAll(entities);
+        log.info("成功保存 {} 只股票到数据库", entities.size());
+
+        // 刷新内存缓存
+        allStocks.clear();
+        allStocks.addAll(stocks);
+
+        return stocks.size();
+    }
+
+    /**
+     * 从东方财富接口拉取所有A股
+     */
+    private List<StockItem> fetchFromEastMoney() {
         List<StockItem> stocks = new ArrayList<>();
         int page = 1;
-        int pageSize = 5000;
         int total = Integer.MAX_VALUE;
         int maxRetry = 3;
 
         while (stocks.size() < total) {
             String url = "http://push2.eastmoney.com/api/qt/clist/get?"
                     + "pn=" + page
-                    + "&pz=" + pageSize
+                    + "&pz=5000"
                     + "&po=1&np=1&fltt=2&invt=2&fid=f3"
                     + "&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23"
                     + "&fields=f12,f14,f13";
@@ -74,14 +133,14 @@ public class StockCacheService {
                     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                     if (response.statusCode() != 200) {
                         log.warn("第{}页HTTP状态码{}，重试{}/{}", page, response.statusCode(), retry, maxRetry);
-                        Thread.sleep(1000);
+                        Thread.sleep(3000);
                         continue;
                     }
 
                     JsonNode root = objectMapper.readTree(response.body());
                     JsonNode data = root.path("data");
                     if (data.isNull() || data.isMissingNode()) {
-                        total = stocks.size(); // 没有更多数据了
+                        total = stocks.size();
                         pageSuccess = true;
                         break;
                     }
@@ -100,35 +159,29 @@ public class StockCacheService {
                         stocks.add(new StockItem(code, name));
                     }
 
-                    log.info("加载股票缓存第{}页，累计{}/{}", page, stocks.size(), total);
+                    log.info("拉取第{}页，本页{}条，累计{}/{}", page, diff.size(), stocks.size(), total);
                     pageSuccess = true;
                     break;
 
                 } catch (Exception e) {
                     log.warn("第{}页失败(重试{}/{}): {}", page, retry, maxRetry, e.getMessage());
-                    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                    try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
                 }
             }
 
             if (!pageSuccess) {
-                log.warn("第{}页重试{}次仍失败，跳过继续下一页", page, maxRetry);
+                log.warn("第{}页重试{}次仍失败，跳过", page, maxRetry);
             }
 
             page++;
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
         }
 
-        allStocks.clear();
-        allStocks.addAll(stocks);
-        log.info("股票缓存加载完成，共 {} 只A股", allStocks.size());
+        return stocks;
     }
 
     /**
      * 搜索股票（支持代码或名称模糊匹配）
-     *
-     * @param keyword 搜索关键字
-     * @param limit   最大返回条数
-     * @return 匹配的股票列表
      */
     public List<StockItem> search(String keyword, int limit) {
         if (keyword == null || keyword.isBlank()) {
@@ -151,7 +204,7 @@ public class StockCacheService {
     }
 
     /**
-     * 获取所有股票（慎用，数据量大）
+     * 获取所有股票
      */
     public List<StockItem> getAll() {
         return Collections.unmodifiableList(allStocks);

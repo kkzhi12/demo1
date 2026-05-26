@@ -1,6 +1,7 @@
 package com.example.demo.rest;
 
 import com.example.demo.service.EastMoneyCrawlerService;
+import com.example.demo.service.StockCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ import java.util.Map;
 public class CrawlerController {
 
     private final EastMoneyCrawlerService crawlerService;
+    private final StockCacheService stockCacheService;
 
     /**
      * 爬取单只银行股数据
@@ -81,5 +83,27 @@ public class CrawlerController {
     public List<EastMoneyCrawlerService.CrawlResult> crawlAllBanksDynamic(
             @RequestParam("reportPeriod") String reportPeriod) {
         return crawlerService.crawlAllBanksDynamic(reportPeriod);
+    }
+
+    /**
+     * 搜索股票（从本地缓存搜索，支持代码或名称模糊匹配）
+     * 缓存在服务启动时从东方财富加载
+     *
+     * @param keyword 搜索关键字
+     * @param limit   最大返回条数，默认30
+     */
+    @GetMapping("/search-stock")
+    public List<StockCacheService.StockItem> searchStock(
+            @RequestParam("keyword") String keyword,
+            @RequestParam(value = "limit", defaultValue = "30") int limit) {
+        return stockCacheService.search(keyword, limit);
+    }
+
+    /**
+     * 获取缓存状态
+     */
+    @GetMapping("/cache-status")
+    public Map<String, Object> cacheStatus() {
+        return Map.of("cacheSize", stockCacheService.getCacheSize());
     }
 }

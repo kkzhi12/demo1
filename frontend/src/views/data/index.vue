@@ -119,10 +119,10 @@
           </el-table-column>
         </el-table-column>
 
-        <el-table-column label="操作" width="100" fixed="right" align="center">
+        <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" size="small" link @click="viewHistory(row)">
-              历史数据
+            <el-button type="primary" size="small" link @click="viewChart(row)">
+              图表趋势
             </el-button>
           </template>
         </el-table-column>
@@ -142,53 +142,18 @@
       </div>
     </div>
 
-    <!-- 历史数据弹窗 -->
-    <el-dialog
-      v-model="historyVisible"
-      :title="`${historyStock.stockName}（${historyStock.stockCode}）历史数据`"
-      width="900px"
-    >
-      <el-table :data="historyData" border stripe size="small" v-loading="historyLoading">
-        <el-table-column prop="reportPeriod" label="报告期" width="85" align="center" />
-        <el-table-column prop="roe" label="ROE%" width="80" align="right">
-          <template #default="{ row }">{{ formatNum(row.roe) }}</template>
-        </el-table-column>
-        <el-table-column prop="nim" label="净息差%" width="80" align="right">
-          <template #default="{ row }">{{ formatNum(row.nim) }}</template>
-        </el-table-column>
-        <el-table-column prop="nplRatio" label="不良率%" width="80" align="right">
-          <template #default="{ row }">{{ formatNum(row.nplRatio) }}</template>
-        </el-table-column>
-        <el-table-column prop="provisionCoverageRatio" label="拨备覆盖率%" width="105" align="right">
-          <template #default="{ row }">{{ formatNum(row.provisionCoverageRatio) }}</template>
-        </el-table-column>
-        <el-table-column prop="revenueGrowthRate" label="营收增长%" width="95" align="right">
-          <template #default="{ row }">
-            <span :class="growthClass(row.revenueGrowthRate)">{{ formatNum(row.revenueGrowthRate) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="netProfitGrowthRate" label="净利润增长%" width="100" align="right">
-          <template #default="{ row }">
-            <span :class="growthClass(row.netProfitGrowthRate)">{{ formatNum(row.netProfitGrowthRate) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="coreCapitalAdequacyRatio" label="核心一级%" width="90" align="right">
-          <template #default="{ row }">{{ formatNum(row.coreCapitalAdequacyRatio) }}</template>
-        </el-table-column>
-        <el-table-column prop="capitalAdequacyRatio" label="资本充足率%" width="100" align="right">
-          <template #default="{ row }">{{ formatNum(row.capitalAdequacyRatio) }}</template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
+    <!-- 历史数据弹窗（已移除，改为跳转图表页） -->
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { dataApi } from '@/api'
 
+const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
 const reportPeriods = ref([])
@@ -205,12 +170,6 @@ const pagination = reactive({
   size: 15,
   total: 0
 })
-
-// 历史数据弹窗
-const historyVisible = ref(false)
-const historyLoading = ref(false)
-const historyData = ref([])
-const historyStock = reactive({ stockCode: '', stockName: '' })
 
 // 页面加载
 onMounted(async () => {
@@ -255,19 +214,13 @@ function handleReset() {
   handleSearch()
 }
 
-// 查看历史数据
-async function viewHistory(row) {
-  historyStock.stockCode = row.stockCode
-  historyStock.stockName = row.stockName
-  historyVisible.value = true
-  historyLoading.value = true
-  try {
-    historyData.value = await dataApi.getHistory(row.stockCode)
-  } catch (e) {
-    ElMessage.error('获取历史数据失败')
-  } finally {
-    historyLoading.value = false
-  }
+// 查看图表趋势 - 跳转到新tab页
+function viewChart(row) {
+  const routeData = router.resolve({
+    path: '/chart',
+    query: { stockCode: row.stockCode, stockName: row.stockName }
+  })
+  window.open(routeData.href, '_blank')
 }
 
 // 格式化数字

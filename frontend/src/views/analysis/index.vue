@@ -29,118 +29,54 @@
       </div>
     </div>
 
-    <!-- 数据录入 -->
+    <!-- 股票选择 -->
     <div class="page-card">
-      <div class="page-title">📝 银行数据录入</div>
-      <p class="hint">至少输入2家银行数据才能进行比较分析</p>
+      <div class="page-title">📝 选择分析对象</div>
+      <p class="hint">选择报告期和要对比的银行股（至少2只），点击分析即可得出排名</p>
 
-      <el-table :data="tableData" border size="small" max-height="500" class="data-table">
-        <el-table-column label="操作" width="70" fixed>
-          <template #default="{ $index }">
-            <el-button type="danger" size="small" link @click="deleteRow($index)">删除</el-button>
-          </template>
-        </el-table-column>
-        <el-table-column label="股票代码" width="110">
-          <template #default="{ row }">
-            <el-input v-model="row.stockCode" size="small" placeholder="如600036" />
-          </template>
-        </el-table-column>
-        <el-table-column label="股票名称" width="110">
-          <template #default="{ row }">
-            <el-input v-model="row.stockName" size="small" placeholder="如招商银行" />
-          </template>
-        </el-table-column>
-        <el-table-column label="当前股价" width="90">
-          <template #default="{ row }">
-            <el-input-number v-model="row.currentPrice" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
+      <el-form :inline="true" class="select-form">
+        <el-form-item label="报告期">
+          <el-select
+            v-model="selectedPeriod"
+            placeholder="选择报告期"
+            style="width: 140px"
+            @change="onPeriodChange"
+          >
+            <el-option
+              v-for="period in reportPeriods"
+              :key="period"
+              :label="period"
+              :value="period"
+            />
+          </el-select>
+        </el-form-item>
 
-        <!-- 盈利能力 -->
-        <el-table-column label="ROE%" width="85">
-          <template #default="{ row }">
-            <el-input-number v-model="row.roe" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="净息差%" width="85">
-          <template #default="{ row }">
-            <el-input-number v-model="row.nim" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="成本收入比%" width="100">
-          <template #default="{ row }">
-            <el-input-number v-model="row.costIncomeRatio" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
+        <el-form-item label="添加股票">
+          <el-select
+            v-model="selectedStocks"
+            multiple
+            filterable
+            placeholder="搜索并选择股票"
+            style="width: 500px"
+            :loading="stocksLoading"
+          >
+            <el-option
+              v-for="stock in availableStocks"
+              :key="stock.stockCode"
+              :label="`${stock.stockName} (${stock.stockCode})`"
+              :value="stock.stockCode"
+            />
+          </el-select>
+        </el-form-item>
 
-        <!-- 资产质量 -->
-        <el-table-column label="不良率%" width="85">
-          <template #default="{ row }">
-            <el-input-number v-model="row.nplRatio" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="拨备覆盖率%" width="105">
-          <template #default="{ row }">
-            <el-input-number v-model="row.provisionCoverageRatio" size="small" :controls="false" :precision="1" />
-          </template>
-        </el-table-column>
-        <el-table-column label="关注类占比%" width="105">
-          <template #default="{ row }">
-            <el-input-number v-model="row.specialMentionLoanRatio" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
+        <el-form-item>
+          <el-button type="primary" plain @click="selectAll">全选</el-button>
+          <el-button plain @click="selectedStocks = []">清空</el-button>
+        </el-form-item>
+      </el-form>
 
-        <!-- 成长性 -->
-        <el-table-column label="营收增长%" width="95">
-          <template #default="{ row }">
-            <el-input-number v-model="row.revenueGrowthRate" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="净利润增长%" width="105">
-          <template #default="{ row }">
-            <el-input-number v-model="row.netProfitGrowthRate" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="贷款增长%" width="95">
-          <template #default="{ row }">
-            <el-input-number v-model="row.loanGrowthRate" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-
-        <!-- 估值 -->
-        <el-table-column label="PB" width="75">
-          <template #default="{ row }">
-            <el-input-number v-model="row.pb" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="PE" width="75">
-          <template #default="{ row }">
-            <el-input-number v-model="row.pe" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="股息率%" width="85">
-          <template #default="{ row }">
-            <el-input-number v-model="row.dividendYield" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-
-        <!-- 资本充足 -->
-        <el-table-column label="核心一级%" width="95">
-          <template #default="{ row }">
-            <el-input-number v-model="row.coreCapitalAdequacyRatio" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-        <el-table-column label="资本充足率%" width="105">
-          <template #default="{ row }">
-            <el-input-number v-model="row.capitalAdequacyRatio" size="small" :controls="false" :precision="2" />
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="table-actions">
-        <el-button type="primary" @click="addRow">+ 添加银行</el-button>
-        <el-button @click="loadSampleData">载入示例数据</el-button>
-        <el-button type="danger" plain @click="clearAll">清空数据</el-button>
+      <div class="selected-info" v-if="selectedStocks.length > 0">
+        <el-tag type="info" size="small">已选择 {{ selectedStocks.length }} 只股票</el-tag>
       </div>
     </div>
 
@@ -153,7 +89,7 @@
 
     <!-- 结果展示 -->
     <div class="page-card" v-if="results.length > 0">
-      <div class="page-title">📈 分析结果</div>
+      <div class="page-title">📈 分析结果（{{ selectedPeriod }}）</div>
 
       <!-- Top3 卡片 -->
       <el-row :gutter="16" class="top-cards">
@@ -163,7 +99,7 @@
             <div class="stock-name">{{ item.stockName }}</div>
             <div class="stock-code">{{ item.stockCode }}</div>
             <div class="total-score">综合得分: {{ item.totalScore }}</div>
-            <div class="detail">股息率: {{ item.dividendYield || '-' }}%</div>
+            <div class="detail">ROE: {{ item.roe || '-' }}% | 股息率: {{ item.dividendYield || '-' }}%</div>
           </el-card>
         </el-col>
       </el-row>
@@ -192,13 +128,18 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { analysisApi } from '@/api'
-import { SAMPLE_DATA } from './sampleData'
+import { analysisApi, dataApi } from '@/api'
+import request from '@/api'
 
 const loading = ref(false)
+const stocksLoading = ref(false)
 const results = ref([])
+const reportPeriods = ref([])
+const availableStocks = ref([])
+const selectedPeriod = ref('')
+const selectedStocks = ref([])
 
 // 权重配置
 const weights = reactive({
@@ -228,42 +169,58 @@ function applyStrategy(name) {
   Object.assign(weights, STRATEGIES[name])
 }
 
-// 表格数据
-const tableData = ref([createEmptyRow(), createEmptyRow()])
+// 页面加载
+onMounted(async () => {
+  await loadReportPeriods()
+})
 
-function createEmptyRow() {
-  return {
-    stockCode: null, stockName: null, currentPrice: null,
-    roe: null, nim: null, costIncomeRatio: null,
-    nplRatio: null, provisionCoverageRatio: null, specialMentionLoanRatio: null,
-    revenueGrowthRate: null, netProfitGrowthRate: null, loanGrowthRate: null,
-    pb: null, pe: null, dividendYield: null,
-    coreCapitalAdequacyRatio: null, capitalAdequacyRatio: null
+// 加载报告期列表
+async function loadReportPeriods() {
+  try {
+    const data = await dataApi.getReportPeriods()
+    reportPeriods.value = data
+    // 默认选最新的报告期
+    if (data.length > 0) {
+      selectedPeriod.value = data[0]
+      await onPeriodChange()
+    }
+  } catch (e) {
+    console.error('获取报告期失败', e)
   }
 }
 
-function addRow() {
-  tableData.value.push(createEmptyRow())
+// 报告期变化时，加载该报告期可用的股票列表
+async function onPeriodChange() {
+  if (!selectedPeriod.value) return
+  stocksLoading.value = true
+  try {
+    const data = await request.get('/bank-stock/available-stocks', {
+      params: { reportPeriod: selectedPeriod.value }
+    })
+    availableStocks.value = data
+    // 清空之前的选择
+    selectedStocks.value = []
+  } catch (e) {
+    console.error('获取股票列表失败', e)
+  } finally {
+    stocksLoading.value = false
+  }
 }
 
-function deleteRow(index) {
-  tableData.value.splice(index, 1)
-}
-
-function loadSampleData() {
-  tableData.value = SAMPLE_DATA.map(item => ({ ...item }))
-}
-
-function clearAll() {
-  tableData.value = []
-  results.value = []
+// 全选
+function selectAll() {
+  selectedStocks.value = availableStocks.value.map(s => s.stockCode)
 }
 
 // 运行分析
 async function runAnalysis() {
-  const validData = tableData.value.filter(row => row.stockName)
-  if (validData.length < 2) {
-    ElMessage.warning('至少需要输入2家银行数据')
+  if (selectedStocks.value.length < 2) {
+    ElMessage.warning('至少需要选择2只股票进行对比分析')
+    return
+  }
+
+  if (!selectedPeriod.value) {
+    ElMessage.warning('请选择报告期')
     return
   }
 
@@ -275,12 +232,17 @@ async function runAnalysis() {
 
   loading.value = true
   try {
-    const data = await analysisApi.analyzeJson({
-      bankStocks: validData,
+    const data = await request.post('/bank-stock/analyze-db', {
+      stockCodes: selectedStocks.value,
+      reportPeriod: selectedPeriod.value,
       weight: { ...weights }
     })
     results.value = data
-    ElMessage.success('分析完成')
+    if (data.length === 0) {
+      ElMessage.warning('所选股票在该报告期无有效数据')
+    } else {
+      ElMessage.success('分析完成')
+    }
   } catch (e) {
     ElMessage.error('分析失败: ' + e.message)
   } finally {
@@ -318,10 +280,12 @@ async function runAnalysis() {
   justify-content: center;
 }
 
-.table-actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 8px;
+.select-form {
+  margin-bottom: 12px;
+}
+
+.selected-info {
+  margin-top: 8px;
 }
 
 .analyze-action {
@@ -372,9 +336,5 @@ async function runAnalysis() {
 .score-highlight {
   color: #409eff;
   font-weight: bold;
-}
-
-.data-table :deep(.el-input-number) {
-  width: 100%;
 }
 </style>

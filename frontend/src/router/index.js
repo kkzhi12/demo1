@@ -22,6 +22,18 @@ const routes = [
     name: 'Data',
     component: () => import('@/views/data/index.vue'),
     meta: { title: '数据查看' }
+  },
+  {
+    path: '/chart',
+    name: 'Chart',
+    component: () => import('@/views/chart/index.vue'),
+    meta: { title: '图表趋势' }
+  },
+  {
+    path: '/realtime',
+    name: 'Realtime',
+    component: () => import('@/views/realtime/index.vue'),
+    meta: { title: '实时行情' }
   }
 ]
 

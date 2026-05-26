@@ -341,6 +341,138 @@ public class EastMoneyCrawlerService {
     }
 
     /**
+     * 搜索股票（支持代码或名称模糊匹配）
+     * 从东方财富行情接口搜索，支持所有A股
+     *
+     * @param keyword 搜索关键字（代码或名称）
+     * @return 匹配的股票列表（最多50条）
+     */
+    public List<Map<String, String>> searchStock(String keyword) {
+        List<Map<String, String>> result = new ArrayList<>();
+        if (keyword == null || keyword.isBlank()) return result;
+
+        String url = "http://push2.eastmoney.com/api/qt/clist/get?"
+                + "pn=1&pz=50&po=1&np=1&fltt=2&invt=2&fid=f3"
+                + "&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23"
+                + "&fields=f12,f14,f13"
+                + "&fid0=f12&filter0=(f12+like+%22" + keyword + "%25%22)"
+                + "|(f14+like+%22%" + keyword + "%25%22)";
+
+        // 东方财富的搜索用另一个更简单的接口
+        String searchUrl = "https://searchapi.eastmoney.com/api/suggest/get?"
+                + "input=" + keyword
+                + "&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=20";
+
+        try {
+            String json = doGet(searchUrl);
+            if (json == null || json.isBlank()) return result;
+
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode dataNode = root.path("QuotationCodeTable").path("Data");
+
+            if (dataNode.isArray()) {
+                for (JsonNode item : dataNode) {
+                    String code = item.path("Code").asText();
+                    String name = item.path("Name").asText();
+                    String market = item.path("MktNum").asText();
+
+                    // 只保留沪深A股（MktNum: 33=深圳, 17=上海）
+                    if ("33".equals(market) || "17".equals(market)) {
+                        Map<String, String> stock = new LinkedHashMap<>();
+                        stock.put("stockCode", code);
+                        stock.put("stockName", name);
+                        result.add(stock);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("搜索股票失败: {}", e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * 实时获取指定股票的PB、PE、股息率（从行情接口）
+     * 不入库，每次分析时实时调用
+     *
+     * @param stockCodes 股票代码列表
+     * @return 股票代码 -> 估值数据Map
+     */
+    public Map<String, ValuationData> fetchRealtimeValuation(List<String> stockCodes) {
+        Map<String, ValuationData> result = new HashMap<>();
+
+        // 构建 secids 参数：1.601398,0.000001 (1=上海,0=深圳)
+        StringBuilder secids = new StringBuilder();
+        for (String code : stockCodes) {
+            if (secids.length() > 0) secids.append(",");
+            String market = code.startsWith("6") ? "1" : "0";
+            secids.append(market).append(".").append(code);
+        }
+
+        String url = "http://push2.eastmoney.com/api/qt/ulist.np/get?"
+                + "fltt=2&invt=2&fields=f12,f14,f23,f9,f115"
+                + "&secids=" + secids;
+        // f12=代码, f14=名称, f23=PB, f9=PE(动态), f115=股息率
+
+        try {
+            String json = doGet(url);
+            if (json == null || json.isBlank()) {
+                log.warn("获取实时估值数据为空");
+                return result;
+            }
+
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode data = root.path("data").path("diff");
+
+            if (data.isArray()) {
+                for (JsonNode item : data) {
+                    String code = item.path("f12").asText();
+                    Double pb = getDoubleFromNode(item, "f23");
+                    Double pe = getDoubleFromNode(item, "f9");
+                    Double dividendYield = getDoubleFromNode(item, "f115");
+
+                    result.put(code, new ValuationData(pb, pe, dividendYield));
+                }
+                log.info("成功获取 {} 只股票的实时估值数据", result.size());
+            }
+
+        } catch (Exception e) {
+            log.error("获取实时估值数据失败: {}", e.getMessage());
+        }
+
+        return result;
+    }
+
+    private Double getDoubleFromNode(JsonNode node, String field) {
+        if (node.has(field) && !node.get(field).isNull()) {
+            try {
+                double val = node.get(field).asDouble();
+                // 东方财富用 "-" 表示无数据，asDouble会返回0
+                if (val == 0 && !node.get(field).asText().equals("0")) {
+                    return null;
+                }
+                return val;
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 实时估值数据
+     */
+    @lombok.Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class ValuationData {
+        private Double pb;
+        private Double pe;
+        private Double dividendYield;
+    }
+
+    /**
      * 从东方财富接口动态获取所有A股股票代码列表
      * 接口：push2.eastmoney.com/api/qt/clist/get
      *

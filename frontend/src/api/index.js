@@ -67,4 +67,7 @@ export const crawlerApi = {
   // 批量爬取（动态列表）
   crawlAllBanksDynamic: (reportPeriod) =>
     request.get('/crawler/all-banks-dynamic', { params: { reportPeriod } }),
+  // 搜索股票（支持所有A股）
+  searchStock: (keyword) =>
+    request.get('/crawler/search-stock', { params: { keyword } }),
 }

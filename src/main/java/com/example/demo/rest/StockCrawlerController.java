@@ -76,17 +76,23 @@ public class StockCrawlerController {
             StockCacheService.StockItem stock = allStocks.get(i);
             String stockCode = stock.getStockCode();
 
-            // 检查是否已存在，存在就跳过
-            if (stockFinanceDataRepository.findByStockCodeAndReportPeriod(stockCode, reportPeriod).isPresent()) {
-                totalSkip++;
-                continue;
-            }
+            try {
+                // 检查是否已存在，存在就跳过
+                if (stockFinanceDataRepository.findByStockCodeAndReportPeriod(stockCode, reportPeriod).isPresent()) {
+                    totalSkip++;
+                    continue;
+                }
 
-            StockCrawlerService.CrawlResult result = stockCrawlerService.crawlStock(stockCode, reportPeriod);
-            if (result.isSuccess()) {
-                totalSuccess++;
-            } else {
+                StockCrawlerService.CrawlResult result = stockCrawlerService.crawlStock(stockCode, reportPeriod);
+                if (result.isSuccess()) {
+                    totalSuccess++;
+                } else {
+                    totalFail++;
+                }
+            } catch (Exception e) {
+                // 单条失败不影响后续，跳过继续
                 totalFail++;
+                log.debug("爬取{}失败，跳过: {}", stockCode, e.getMessage());
             }
 
             // 请求间隔，避免被封

@@ -18,10 +18,20 @@ const routes = [
     meta: { title: '数据爬取' }
   },
   {
-    path: '/data',
-    name: 'Data',
+    path: '/data/stock',
+    name: 'StockData',
+    component: () => import('@/views/data/stock.vue'),
+    meta: { title: '股票数据查看' }
+  },
+  {
+    path: '/data/bank',
+    name: 'BankData',
     component: () => import('@/views/data/index.vue'),
-    meta: { title: '数据查看' }
+    meta: { title: '银行股数据查看' }
+  },
+  {
+    path: '/data',
+    redirect: '/data/bank'
   },
   {
     path: '/chart',

@@ -2,7 +2,7 @@
   <div class="data-page">
     <!-- 搜索条件 -->
     <div class="page-card">
-      <div class="page-title">📊 数据查看</div>
+      <div class="page-title">📊 银行股数据查看</div>
       <el-form :inline="true" class="search-form">
         <el-form-item label="股票代码/名称">
           <el-input

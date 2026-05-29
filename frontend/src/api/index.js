@@ -35,7 +35,7 @@ export const analysisApi = {
 }
 
 /**
- * 数据查看相关接口
+ * 银行股数据查看相关接口
  */
 export const dataApi = {
   // 分页查询
@@ -46,6 +46,18 @@ export const dataApi = {
   getLatestPeriod: () => request.get('/bank-data/latest-period'),
   // 查询股票历史数据
   getHistory: (stockCode) => request.get(`/bank-data/history/${stockCode}`),
+}
+
+/**
+ * 股票财务数据查看相关接口
+ */
+export const stockFinanceApi = {
+  // 分页查询
+  pageQuery: (params) => request.get('/stock-finance-data/page', { params }),
+  // 获取所有报告期
+  getReportPeriods: () => request.get('/stock-finance-data/report-periods'),
+  // 查询股票历史数据
+  getHistory: (stockCode) => request.get(`/stock-finance-data/history/${stockCode}`),
 }
 
 /**

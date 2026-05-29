@@ -21,10 +21,14 @@
               <el-icon><Download /></el-icon>
               <span>数据爬取</span>
             </el-menu-item>
-            <el-menu-item index="/data">
-              <el-icon><List /></el-icon>
-              <span>数据查看</span>
-            </el-menu-item>
+            <el-sub-menu index="/data">
+              <template #title>
+                <el-icon><List /></el-icon>
+                <span>数据查看</span>
+              </template>
+              <el-menu-item index="/data/stock">股票数据查看</el-menu-item>
+              <el-menu-item index="/data/bank">银行股数据查看</el-menu-item>
+            </el-sub-menu>
             <el-menu-item index="/realtime">
               <el-icon><DataLine /></el-icon>
               <span>实时行情</span>
